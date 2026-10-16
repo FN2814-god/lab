@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Outrun 3D — Lab</title>
+  <meta name="description" content="Simulador y juego 3D Synthwave en Three.js con montañas poligonales, metrópolis cyberpunk y música sintetizada." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cyan: '#00fff0',
+            magenta: '#ff00c8',
+            accent: '#00ff87',
+            'accent-dim': '#00cc6a',
+            surface: '#080810',
+            's1': '#0e0e18',
+            's2': '#13131f',
+            's3': '#1a1a28',
+            's4': '#222235',
+            border: '#2a2a40',
+            'tp': '#eeeeff',
+            'ts': '#7878a0',
+            'tm': '#44445a',
+          },
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'monospace'],
+            sans: ['"Inter"', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'blink': 'blink 1.1s step-end infinite',
+            'pulse-slow': 'pulse 3s ease-in-out infinite',
+            'scan': 'scan 8s linear infinite',
+            'glitch': 'glitch 4s infinite',
+          },
+        },
+      },
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --green: #00ff87;
+      --cyan: #00fff0;
+      --magenta: #ff00c8;
+      --bg: #06060c;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background-color: var(--bg);
+      color: #eeeeff;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a12; }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(var(--green), var(--cyan)); border-radius: 2px; }
+    ::selection { background: rgba(0, 255, 240, 0.2); color: #fff; }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 3px);
+      pointer-events: none;
+      z-index: 9998;
+    }
+    .scan-line {
+      position: fixed; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--cyan) 40%, var(--green) 60%, transparent 100%);
+      opacity: 0.06; animation: scan 12s linear infinite; pointer-events: none; z-index: 9997;
+    }
+    .cyber-grid {
+      background-image: linear-gradient(rgba(0, 255, 240, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 240, 0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .glitch {
+      position: relative; display: inline-block; color: var(--green);
+      text-shadow: 0 0 30px rgba(0, 255, 135, 0.5), 0 0 60px rgba(0, 255, 135, 0.2);
+    }
+    .glitch::before, .glitch::after {
+      content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+    .glitch::before { color: var(--magenta); animation: glitch-1 4s infinite; clip-path: inset(0 0 100% 0); }
+    .glitch::after { color: var(--cyan); animation: glitch-2 4s infinite; clip-path: inset(0 0 100% 0); }
+    @keyframes glitch-1 {
+      0%, 89%, 100% { clip-path: inset(0 0 100% 0); transform: translate(0); }
+      90% { clip-path: inset(15% 0 55% 0); transform: translate(-3px, 2px); }
+      92% { clip-path: inset(65% 0 5% 0); transform: translate(3px, -1px); }
+      94% { clip-path: inset(35% 0 35% 0); transform: translate(-2px, 3px); }
+      96% { clip-path: inset(80% 0 2% 0); transform: translate(2px, -2px); }
+    }
+    @keyframes glitch-2 {
+      0%, 91%, 100% { clip-path: inset(0 0 100% 0); transform: translate(0); }
+      92% { clip-path: inset(50% 0 25% 0); transform: translate(3px, -2px); }
+      94% { clip-path: inset(10% 0 70% 0); transform: translate(-3px, 2px); }
+      96% { clip-path: inset(70% 0 8% 0); transform: translate(2px, -1px); }
+      98% { clip-path: inset(25% 0 50% 0); transform: translate(-2px, 2px); }
+    }
+    .neon-green { color: var(--green); text-shadow: 0 0 8px rgba(0, 255, 135, 0.6); }
+    .neon-cyan { color: var(--cyan); text-shadow: 0 0 8px rgba(0, 255, 240, 0.6); }
+    .neon-mag { color: var(--magenta); text-shadow: 0 0 8px rgba(255, 0, 200, 0.6); }
+
+    .btn-ctl {
+      padding: 6px 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+      border-radius: 4px; border: 1px solid #2a2a40; background: #13131f; color: #eeeeff;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .btn-ctl:hover, .btn-ctl.active {
+      border-color: var(--cyan); background: rgba(0, 255, 240, 0.15); color: #fff;
+      box-shadow: 0 0 12px rgba(0, 255, 240, 0.35);
+    }
+  </style>
+</head>
+<body class="cyber-grid min-h-screen flex flex-col">
+  <div class="scan-line"></div>
+  <header id="navbar" class="fixed top-0 inset-x-0 z-50 transition-all duration-300" style="background:rgba(6,6,12,0.85);backdrop-filter:blur(18px);border-bottom:1px solid rgba(0,255,240,0.08);">
+    <nav class="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
+      <a href="../index.html" class="font-mono font-bold tracking-widest flex items-center gap-1 text-sm text-cyan hover:text-green transition-colors">
+        <span>&lt;- Volver al Lab</span>
+      </a>
+      <a href="https://enmanuel.tech" class="font-mono font-bold tracking-widest flex items-center gap-1 text-sm">
+        <span style="color:#44445a">[</span><span class="neon-green">Cardoza</span><span style="color:#44445a">.</span><span class="neon-cyan">Dev</span><span class="animate-blink" style="color:#00ff87">_</span><span style="color:#44445a">]</span>
+      </a>
+    </nav>
+  </header>
+
+  <main class="pt-20 pb-8 max-w-6xl w-full mx-auto px-3 sm:px-6 flex flex-col items-center flex-grow">
+    <div class="text-center mb-3">
+      <h1 class="font-mono font-bold leading-none mb-1.5" style="font-size:clamp(1.8rem,5vw,2.8rem);">
+        <span class="glitch" data-text="Neon Outrun 3D // Synthwave Drive">Neon Outrun 3D // Synthwave Drive</span>
+      </h1>
+      <p class="text-ts font-mono text-xs sm:text-sm">
+        Vuelo procedural 3D sobre cordilleras de neón y rascacielos cyberpunk en Three.js con synthwave sintetizado.
+      </p>
+    </div>
+
+    <!-- HUD & Controls Bar -->
+    <div class="w-full bg-[#0c0c16]/95 border border-[#1e1e32] rounded-lg p-2.5 sm:p-3 mb-3 flex flex-wrap gap-2.5 items-center justify-between font-mono text-xs shadow-xl">
+      <div class="flex flex-wrap gap-3 sm:gap-5 items-center">
+        <div class="flex items-center gap-1.5">
+          <span class="text-ts">PUNTOS:</span>
+          <span id="hudScore" class="text-accent font-bold text-sm">0</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-ts">VELOCIDAD:</span>
+          <span id="hudSpeed" class="text-cyan font-bold text-sm">210 KM/H</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-ts">ESCUDO:</span>
+          <div class="w-20 sm:w-28 bg-[#1a1a28] h-2.5 rounded-full overflow-hidden border border-[#2a2a40] flex">
+            <div id="hudShieldBar" class="bg-gradient-to-r from-magenta to-cyan h-full transition-all duration-200" style="width: 100%;"></div>
+          </div>
+          <span id="hudShieldText" class="text-magenta font-bold">100%</span>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-center">
+        <div class="flex items-center gap-1.5">
+          <label class="text-ts">Cámara:</label>
+          <button id="btnCamMode" class="btn-ctl active">Piloto</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <label class="text-ts">Tema:</label>
+          <select id="themeSelect" class="bg-[#13131f] text-tp border border-[#2a2a40] rounded px-2 py-1 focus:border-cyan outline-none">
+            <option value="synthwave">Retro Synthwave 80s</option>
+            <option value="matrix">Matrix Code Green</option>
+            <option value="deepspace">Deep Cyberpunk Violet</option>
+          </select>
+        </div>
+        <button id="btnMusic" class="btn-ctl" style="border-color:var(--magenta);color:#ff66e0;">🎵 Música: ON</button>
+        <button id="btnFullscreen" class="btn-ctl hidden sm:inline-block">⛶</button>
+      </div>
+    </div>
+
+    <!-- 3D Canvas Viewport Frame -->
+    <div id="viewportContainer" class="w-full relative overflow-hidden border border-cyan/40 rounded-lg shadow-[0_0_50px_rgba(0,255,240,0.18)] bg-[#040408] min-h-[500px] h-[580px] flex justify-center items-center">
+      <div id="threeContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+      <!-- CRT Scanline / Vignette Overlay for Retro Atmosphere -->
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.65)_100%)]"></div>
+
+      <!-- Start / Game Over Screen Modal -->
+      <div id="overlayScreen" class="absolute inset-0 bg-[#04040a]/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center font-mono select-none z-20">
+        <div class="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magenta via-cyan to-accent mb-2 tracking-widest drop-shadow-[0_0_25px_rgba(0,255,240,0.6)]">
+          NEON OUTRUN 3D
+        </div>
+        <div class="text-xs text-cyan tracking-[0.25em] mb-5 uppercase font-bold">
+          [ SYNTHWAVE // THREE.JS 3D ENGINE ]
+        </div>
+        <p id="overlayMsg" class="text-ts text-xs sm:text-sm mb-7 max-w-lg leading-relaxed">
+          Surfea la autopista de datos interestelar. Esquiva las puertas glitch de cortafuegos y absorbe los cubos cuánticos giratorios.
+        </p>
+        <button id="btnPlayGame" class="px-9 py-3.5 bg-gradient-to-r from-accent via-cyan to-magenta text-black font-extrabold text-sm rounded shadow-[0_0_35px_rgba(0,255,135,0.6)] hover:brightness-125 active:scale-95 transition-all">
+          DESPEGAR / INICIAR VUELO
+        </button>
+      </div>
+
+      <!-- Mobile Touch Controls -->
+      <div class="sm:hidden absolute bottom-4 inset-x-4 flex justify-between pointer-events-none z-10">
+        <button id="btnTouchLeft" class="pointer-events-auto w-16 h-16 rounded-full bg-cyan/25 border-2 border-cyan text-cyan text-2xl font-mono flex items-center justify-center active:bg-cyan/50 shadow-[0_0_15px_rgba(0,255,240,0.4)]">
+          ◀
+        </button>
+        <button id="btnTouchRight" class="pointer-events-auto w-16 h-16 rounded-full bg-cyan/25 border-2 border-cyan text-cyan text-2xl font-mono flex items-center justify-center active:bg-cyan/50 shadow-[0_0_15px_rgba(0,255,240,0.4)]">
+          ▶
+        </button>
+      </div>
+    </div>
+
+    <p class="font-mono text-ts text-xs mt-3.5 text-center">
+      Controles: <kbd class="px-1.5 py-0.5 bg-[#1a1a28] rounded border border-border text-cyan">A / D</kbd> o <kbd class="px-1.5 py-0.5 bg-[#1a1a28] rounded border border-border text-cyan">Flechas</kbd> (o arrastra con el ratón/pantalla táctil) para virar la nave.
+    </p>
+  </main>
+
+  <script>
+    /* ==========================================================================
+       SYNTHWAVE 80s WEB AUDIO SYNTHESIZER
+       Engine sound + Real-time 16th-note bassline arpeggio + Audio FX
+       ========================================================================== */
+    class SynthwaveAudio {
+      constructor() {
+        this.ctx = null;
+        this.musicEnabled = true;
+        this.isPlaying = false;
+        this.bassTimer = null;
+        this.step = 0;
+        this.scale = [110, 110, 130.81, 110, 146.83, 110, 130.81, 164.81]; // A1 arpeggio notes
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      }
+
+      startMusic() {
+        if (!this.musicEnabled || this.bassTimer) return;
+        this.init();
+        const stepTime = 125; // 120 BPM 16th notes
+        this.bassTimer = setInterval(() => {
+          if (!this.musicEnabled) return;
+          this.playBassNote(this.scale[this.step % this.scale.length]);
+          this.step++;
+        }, stepTime);
+      }
+
+      stopMusic() {
+        if (this.bassTimer) {
+          clearInterval(this.bassTimer);
+          this.bassTimer = null;
+        }
+      }
+
+      playBassNote(freq) {
+        if (!this.ctx || !this.musicEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(600, now);
+        filter.frequency.exponentialRampToValueAtTime(140, now + 0.1);
+
+        gain.gain.setValueAtTime(0.045, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
+      playCollect() {
+        if (!this.ctx || !this.musicEnabled) return;
+        const now = this.ctx.currentTime;
+        [587.33, 880, 1174.66, 1760].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+          gain.gain.setValueAtTime(0.08, now + idx * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.04 + 0.18);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.04);
+          osc.stop(now + idx * 0.04 + 0.2);
+        });
+      }
+
+      playHit() {
+        if (!this.ctx || !this.musicEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.28);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+    }
+
+    const sound = new SynthwaveAudio();
+
+    /* ==========================================================================
+       THREE.JS ENGINE ARCHITECTURE
+       ========================================================================== */
+    const container = document.getElementById('threeContainer');
+    const viewportContainer = document.getElementById('viewportContainer');
+    const hudScore = document.getElementById('hudScore');
+    const hudSpeed = document.getElementById('hudSpeed');
+    const hudShieldBar = document.getElementById('hudShieldBar');
+    const hudShieldText = document.getElementById('hudShieldText');
+    const overlayScreen = document.getElementById('overlayScreen');
+    const overlayMsg = document.getElementById('overlayMsg');
+    const btnPlayGame = document.getElementById('btnPlayGame');
+    const btnCamMode = document.getElementById('btnCamMode');
+    const themeSelect = document.getElementById('themeSelect');
+    const btnMusic = document.getElementById('btnMusic');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+    const btnTouchLeft = document.getElementById('btnTouchLeft');
+    const btnTouchRight = document.getElementById('btnTouchRight');
+
+    let scene, camera, renderer;
+    let terrainMesh, terrainWireframe;
+    let highwayMesh, roadTexture, railBeacons = [];
+    let sunMesh, sunInnerGlow, sunOuterGlow, sunAnamorphicFlare, horizonLaser;
+    let playerShip, shipShadowMesh;
+    let thrusterFlames = [];
+    let buildings = [];
+    let obstacles = [];
+    let energyCubes = [];
+    let speedLines;
+    let overheadGates = [];
+    let particleExplosions = [];
+
+    let score = 0;
+    let shield = 100;
+    let speed = 1.6;
+    let isPlaying = false;
+    let camMode = 'pilot'; // 'pilot' or 'orbit'
+
+    let shipX = 0;
+    let targetShipX = 0;
+    let shipBankAngle = 0;
+    const ROAD_WIDTH = 26;
+    const TERRAIN_LENGTH = 500;
+
+    const THEMES = {
+      synthwave: {
+        bg: 0x05040a,
+        fog: 0x070512,
+        grid: 0x00fff0,
+        mountainWire: 0xff00a0,
+        mountainFill: 0x0d071e,
+        roadFill: 0x040308,
+        roadStripe: 0x00fff0,
+        sunTop: '#ff007f',
+        sunBottom: '#ffaa00',
+        bldg: 0x110b24,
+        bldgEdge: 0xff00a0,
+        cube: 0x00fff0,
+        obst: 0xff0044
+      },
+      matrix: {
+        bg: 0x010804,
+        fog: 0x020f07,
+        grid: 0x00ff87,
+        mountainWire: 0x00cc6a,
+        mountainFill: 0x03140a,
+        roadFill: 0x010502,
+        roadStripe: 0x00ff87,
+        sunTop: '#00ff87',
+        sunBottom: '#003315',
+        bldg: 0x04190c,
+        bldgEdge: 0x00ff87,
+        cube: 0x00ff87,
+        obst: 0xff2222
+      },
+      deepspace: {
+        bg: 0x030612,
+        fog: 0x05081a,
+        grid: 0x00aaff,
+        mountainWire: 0x7700ff,
+        mountainFill: 0x080e28,
+        roadFill: 0x02040c,
+        roadStripe: 0x00aaff,
+        sunTop: '#00fff0',
+        sunBottom: '#8800ff',
+        bldg: 0x0a1030,
+        bldgEdge: 0x00aaff,
+        cube: 0x00ffff,
+        obst: 0xff0088
+      }
+    };
+    let currentTheme = THEMES.synthwave;
+
+    function initThree() {
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(currentTheme.bg);
+      scene.fog = new THREE.FogExp2(currentTheme.fog, 0.0048);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(66, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, 4.8, 12);
+      camera.lookAt(0, 2.5, -40);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = false;
+      container.appendChild(renderer.domElement);
+
+      // Ambient & Directional Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0x00fff0, 1.2);
+      dirLight.position.set(0, 30, 20);
+      scene.add(dirLight);
+
+      // Build World Elements
+      createSynthwaveSun();
+      createRollingTerrain();
+      createPlayerShip();
+      createSkyscrapers();
+      createOverheadGates();
+      createSpeedLines();
+
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    /* --------------------------------------------------------------------------
+       1. SYNTHWAVE SUN (High-Res True Transparent Cutouts, Dual Coronas & Anamorphic Flare)
+       -------------------------------------------------------------------------- */
+    function generateSunTexture(themeKey) {
+      const sunCanvas = document.createElement('canvas');
+      sunCanvas.width = 1024;
+      sunCanvas.height = 1024;
+      const sCtx = sunCanvas.getContext('2d');
+      sCtx.clearRect(0, 0, 1024, 1024);
+
+      const cx = 512, cy = 512, r = 480;
+
+      // Base Sun Circle
+      sCtx.save();
+      sCtx.beginPath();
+      sCtx.arc(cx, cy, r, 0, Math.PI * 2);
+      sCtx.clip();
+
+      // Multi-stop Vertical Sunset Gradient
+      const grad = sCtx.createLinearGradient(0, cy - r, 0, cy + r);
+      if (themeKey === 'matrix') {
+        grad.addColorStop(0.0, '#00280d');
+        grad.addColorStop(0.25, '#006622');
+        grad.addColorStop(0.55, '#00cc55');
+        grad.addColorStop(0.8, '#00ff87');
+        grad.addColorStop(0.95, '#aaffdd');
+        grad.addColorStop(1.0, '#ffffff');
+      } else if (themeKey === 'deepspace') {
+        grad.addColorStop(0.0, '#2a0066');
+        grad.addColorStop(0.3, '#5500cc');
+        grad.addColorStop(0.6, '#0077ff');
+        grad.addColorStop(0.85, '#00e5ff');
+        grad.addColorStop(0.95, '#b3f7ff');
+        grad.addColorStop(1.0, '#ffffff');
+      } else {
+        // Iconic 80s Synthwave Sunset Gradient
+        grad.addColorStop(0.0, '#4a0072'); // Deep cosmic violet at the apex
+        grad.addColorStop(0.2, '#990088'); // Rich purple-magenta
+        grad.addColorStop(0.42, '#ff007f'); // Hot electric neon pink
+        grad.addColorStop(0.65, '#ff2a2a'); // Blazing red-orange
+        grad.addColorStop(0.82, '#ff8800'); // Molten solar orange
+        grad.addColorStop(0.94, '#ffdd00'); // Radiant golden yellow
+        grad.addColorStop(1.0, '#ffffff'); // Incandescent white-hot base
+      }
+      sCtx.fillStyle = grad;
+      sCtx.fillRect(0, 0, 1024, 1024);
+
+      // Subtle CRT Scanline texture over upper half
+      sCtx.fillStyle = 'rgba(0, 0, 0, 0.09)';
+      for (let y = cy - r; y < cy + 10; y += 6) {
+        sCtx.fillRect(0, y, 1024, 1.5);
+      }
+
+      // Venetian Blind Slices (True Transparent Cutouts using destination-out)
+      sCtx.globalCompositeOperation = 'destination-out';
+      const numStripes = 15;
+      const startY = cy + 12;
+      const endY = cy + r - 16;
+
+      for (let i = 0; i < numStripes; i++) {
+        const progress = i / (numStripes - 1);
+        const y = startY + Math.pow(progress, 1.25) * (endY - startY);
+        const stripeH = 3.5 + Math.pow(progress, 1.55) * 23; // Thicker stripes towards the bottom
+
+        sCtx.fillStyle = '#000000';
+        sCtx.beginPath();
+        if (sCtx.roundRect) {
+          sCtx.roundRect(24, y, 976, stripeH, stripeH / 2);
+        } else {
+          sCtx.rect(24, y, 976, stripeH);
+        }
+        sCtx.fill();
+      }
+      sCtx.restore();
+
+      const tex = new THREE.CanvasTexture(sunCanvas);
+      tex.generateMipmaps = true;
+      return tex;
+    }
+
+    function generateGlowTexture(colorInner, colorOuter) {
+      const gCanvas = document.createElement('canvas');
+      gCanvas.width = 512;
+      gCanvas.height = 512;
+      const gCtx = gCanvas.getContext('2d');
+
+      const grad = gCtx.createRadialGradient(256, 256, 0, 256, 256, 256);
+      grad.addColorStop(0.0, colorInner);
+      grad.addColorStop(0.4, colorOuter);
+      grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+      gCtx.fillStyle = grad;
+      gCtx.fillRect(0, 0, 512, 512);
+
+      return new THREE.CanvasTexture(gCanvas);
+    }
+
+    function generateAnamorphicTexture(coreColor, edgeColor) {
+      const aCanvas = document.createElement('canvas');
+      aCanvas.width = 1024;
+      aCanvas.height = 128;
+      const aCtx = aCanvas.getContext('2d');
+
+      // Horizontal linear beam
+      const hGrad = aCtx.createLinearGradient(0, 0, 1024, 0);
+      hGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0)');
+      hGrad.addColorStop(0.32, edgeColor);
+      hGrad.addColorStop(0.5, coreColor);
+      hGrad.addColorStop(0.68, edgeColor);
+      hGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+      aCtx.fillStyle = hGrad;
+      aCtx.fillRect(0, 0, 1024, 128);
+
+      // Vertical falloff
+      aCtx.globalCompositeOperation = 'destination-in';
+      const vGrad = aCtx.createLinearGradient(0, 0, 0, 128);
+      vGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0)');
+      vGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+      vGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+      aCtx.fillStyle = vGrad;
+      aCtx.fillRect(0, 0, 1024, 128);
+
+      return new THREE.CanvasTexture(aCanvas);
+    }
+
+    function createSynthwaveSun() {
+      const currentKey = themeSelect ? themeSelect.value : 'synthwave';
+
+      // 1. Sun Disc with True Transparent Venetian Blinds
+      const texture = generateSunTexture(currentKey);
+      const sunGeo = new THREE.PlaneGeometry(180, 180);
+      const sunMat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        fog: false,
+        depthWrite: false
+      });
+      sunMesh = new THREE.Mesh(sunGeo, sunMat);
+      sunMesh.position.set(0, 27, -330);
+      scene.add(sunMesh);
+
+      // 2. Intense Core Coronal Glow
+      const innerTex = generateGlowTexture('rgba(255, 220, 90, 0.85)', 'rgba(255, 0, 130, 0.35)');
+      const innerGeo = new THREE.PlaneGeometry(245, 245);
+      const innerMat = new THREE.MeshBasicMaterial({
+        map: innerTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        fog: false,
+        depthWrite: false
+      });
+      sunInnerGlow = new THREE.Mesh(innerGeo, innerMat);
+      sunInnerGlow.position.set(0, 27, -332);
+      scene.add(sunInnerGlow);
+
+      // 3. Wide Atmospheric Nebula Bloom Aura
+      const outerTex = generateGlowTexture('rgba(255, 0, 180, 0.45)', 'rgba(80, 0, 160, 0.12)');
+      const outerGeo = new THREE.PlaneGeometry(450, 450);
+      const outerMat = new THREE.MeshBasicMaterial({
+        map: outerTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        fog: false,
+        depthWrite: false,
+        opacity: 0.65
+      });
+      sunOuterGlow = new THREE.Mesh(outerGeo, outerMat);
+      sunOuterGlow.position.set(0, 27, -335);
+      scene.add(sunOuterGlow);
+
+      // 4. Cinematic Anamorphic Horizontal Flare Beam (Cinema Lens Flare)
+      const flareTex = generateAnamorphicTexture('#ffffff', 'rgba(255, 0, 160, 0.7)');
+      const flareGeo = new THREE.PlaneGeometry(680, 16);
+      const flareMat = new THREE.MeshBasicMaterial({
+        map: flareTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        fog: false,
+        depthWrite: false
+      });
+      sunAnamorphicFlare = new THREE.Mesh(flareGeo, flareMat);
+      sunAnamorphicFlare.position.set(0, 27, -328);
+      scene.add(sunAnamorphicFlare);
+
+      // 5. Razor Horizon Laser Beam
+      const laserGeo = new THREE.PlaneGeometry(550, 0.9);
+      const laserMat = new THREE.MeshBasicMaterial({
+        color: 0xff00c8,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        fog: false
+      });
+      horizonLaser = new THREE.Mesh(laserGeo, laserMat);
+      horizonLaser.position.set(0, 0.5, -325);
+      scene.add(horizonLaser);
+    }
+
+    function generateHighwayTexture(themeKey) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      // Dark reflective cyber tarmac base
+      ctx.fillStyle = '#060611';
+      ctx.fillRect(0, 0, 512, 1024);
+
+      // Micro carbon-fiber tarmac streaks
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      for (let y = 0; y < 1024; y += 4) {
+        ctx.fillRect(0, y, 512, 2);
+      }
+
+      const mainColor = themeKey === 'matrix' ? '#00ff87' : (themeKey === 'deepspace' ? '#00fff0' : '#00fff0');
+      const accentColor = themeKey === 'matrix' ? '#00aa44' : (themeKey === 'deepspace' ? '#7700ff' : '#ff00c8');
+
+      // Perpendicular Neon Laser Grid Lines across highway
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = 10;
+      for (let y = 0; y < 1024; y += 64) {
+        ctx.beginPath();
+        ctx.moveTo(8, y);
+        ctx.lineTo(504, y);
+        ctx.stroke();
+      }
+
+      // Outer Edge Hazard Borders (Chevrons/Stripes)
+      ctx.fillStyle = mainColor;
+      for (let y = 0; y < 1024; y += 32) {
+        ctx.fillRect(6, y, 10, 16);
+        ctx.fillRect(496, y, 10, 16);
+      }
+
+      // Left & Right Lane Divider Dashes (Neon Laser Dashes)
+      ctx.strokeStyle = 'rgba(0, 255, 240, 0.45)';
+      if (themeKey === 'matrix') ctx.strokeStyle = 'rgba(0, 255, 135, 0.45)';
+      if (themeKey === 'deepspace') ctx.strokeStyle = 'rgba(0, 170, 255, 0.45)';
+      ctx.lineWidth = 3.5;
+      ctx.setLineDash([22, 26]);
+      ctx.beginPath(); ctx.moveTo(170, 0); ctx.lineTo(170, 1024); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(342, 0); ctx.lineTo(342, 1024); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Center High-Intensity Double Laser Strip
+      ctx.strokeStyle = mainColor;
+      ctx.lineWidth = 4;
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.moveTo(251, 0); ctx.lineTo(251, 1024); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(261, 0); ctx.lineTo(261, 1024); ctx.stroke();
+
+      // Forward Speed Chevrons (>>> in lanes)
+      ctx.strokeStyle = mainColor;
+      ctx.lineWidth = 3;
+      for (let y = 64; y < 1024; y += 256) {
+        [95, 256, 417].forEach(x => {
+          ctx.beginPath();
+          ctx.moveTo(x - 16, y + 18);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + 16, y + 18);
+          ctx.stroke();
+        });
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 28);
+      return tex;
+    }
+
+    /* --------------------------------------------------------------------------
+       2. SYNTHWAVE TERRAIN (Flat Center Highway + Mountain Ranges)
+       -------------------------------------------------------------------------- */
+    let terrainGeo;
+    let initialVerticesY = [];
+
+    function createRollingTerrain() {
+      const width = 340;
+      const length = TERRAIN_LENGTH;
+      const segmentsW = 56;
+      const segmentsL = 90;
+
+      terrainGeo = new THREE.PlaneGeometry(width, length, segmentsW, segmentsL);
+      terrainGeo.rotateX(-Math.PI / 2);
+
+      const pos = terrainGeo.attributes.position;
+      initialVerticesY = new Float32Array(pos.count);
+
+      // Sculpt vertices: flat highway in center, wavy mountains on sides
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+
+        let y = 0;
+        const distFromRoad = Math.abs(x) - (ROAD_WIDTH / 2);
+
+        if (distFromRoad > 0) {
+          const factor = Math.min(distFromRoad / 45, 1.0);
+          y = (Math.sin(x * 0.08) * Math.cos(z * 0.04) * 18 +
+               Math.cos(x * 0.03 + z * 0.03) * 24 +
+               Math.sin(z * 0.08) * 10) * factor;
+          y = Math.max(0, y);
+        }
+
+        pos.setY(i, y);
+        initialVerticesY[i] = y;
+      }
+      terrainGeo.computeVertexNormals();
+
+      // Solid Mountain Mesh
+      const terrainMat = new THREE.MeshLambertMaterial({
+        color: currentTheme.mountainFill,
+        flatShading: true
+      });
+      terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+      terrainMesh.position.set(0, -0.4, -180);
+      scene.add(terrainMesh);
+
+      // Glowing Wireframe Overlay
+      const wireMat = new THREE.MeshBasicMaterial({
+        color: currentTheme.mountainWire,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.45
+      });
+      terrainWireframe = new THREE.Mesh(terrainGeo, wireMat);
+      terrainWireframe.position.copy(terrainMesh.position);
+      scene.add(terrainWireframe);
+
+      // Central Highway Surface with Animated Neon Texture
+      const currentKey = themeSelect ? themeSelect.value : 'synthwave';
+      roadTexture = generateHighwayTexture(currentKey);
+
+      const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, TERRAIN_LENGTH);
+      roadGeo.rotateX(-Math.PI / 2);
+      const roadMat = new THREE.MeshStandardMaterial({
+        map: roadTexture,
+        roughness: 0.15,
+        metalness: 0.85,
+        emissive: new THREE.Color(currentTheme.grid),
+        emissiveMap: roadTexture,
+        emissiveIntensity: 0.5
+      });
+      highwayMesh = new THREE.Mesh(roadGeo, roadMat);
+      highwayMesh.position.set(0, -0.2, -180);
+      scene.add(highwayMesh);
+
+      // Dual Neon Guardrails on Road Borders
+      const railGeo = new THREE.BoxGeometry(0.35, 0.45, TERRAIN_LENGTH);
+      const railMat = new THREE.MeshBasicMaterial({ color: currentTheme.grid });
+
+      const leftRail = new THREE.Mesh(railGeo, railMat);
+      leftRail.position.set(-ROAD_WIDTH / 2, 0.15, -180);
+      scene.add(leftRail);
+
+      const rightRail = new THREE.Mesh(railGeo, railMat);
+      rightRail.position.set(ROAD_WIDTH / 2, 0.15, -180);
+      scene.add(rightRail);
+
+      // 28 Pairs of Animated Glowing Neon Rail Beacons
+      const beaconGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.7, 8);
+      const beaconMat = new THREE.MeshBasicMaterial({ color: currentTheme.grid });
+
+      for (let i = 0; i < 28; i++) {
+        const z = -i * (TERRAIN_LENGTH / 28);
+        const leftB = new THREE.Mesh(beaconGeo, beaconMat);
+        leftB.position.set(-ROAD_WIDTH / 2, 0.5, z);
+        scene.add(leftB);
+
+        const rightB = new THREE.Mesh(beaconGeo, beaconMat);
+        rightB.position.set(ROAD_WIDTH / 2, 0.5, z);
+        scene.add(rightB);
+
+        railBeacons.push(leftB, rightB);
+      }
+    }
+
+    function generateShipShadowTexture(themeKey) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 512, 512);
+
+      const cx = 256, cy = 256;
+      const neonColor = themeKey === 'matrix' ? 'rgba(0, 255, 135, 0.45)' : (themeKey === 'deepspace' ? 'rgba(0, 255, 255, 0.45)' : 'rgba(0, 255, 240, 0.45)');
+      const glowColor = themeKey === 'matrix' ? 'rgba(0, 255, 135, 0.8)' : (themeKey === 'deepspace' ? 'rgba(0, 200, 255, 0.8)' : 'rgba(255, 0, 200, 0.75)');
+
+      // 1. Outer Soft Colored Underglow Aura (Aerodynamic Ellipse)
+      const auraGrad = ctx.createRadialGradient(cx, cy + 20, 20, cx, cy + 10, 220);
+      auraGrad.addColorStop(0.0, neonColor);
+      auraGrad.addColorStop(0.5, 'rgba(0, 255, 240, 0.15)');
+      auraGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 10, 180, 220, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Twin High-Intensity Thruster Glow Spots at rear
+      [cx - 70, cx + 70].forEach(tx => {
+        const tGrad = ctx.createRadialGradient(tx, cy + 110, 5, tx, cy + 110, 60);
+        tGrad.addColorStop(0.0, glowColor);
+        tGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = tGrad;
+        ctx.beginPath();
+        ctx.arc(tx, cy + 110, 60, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 3. True Aerodynamic Ship Shadow Silhouette (Ambient Occlusion)
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      ctx.shadowBlur = 24;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 140);
+      ctx.lineTo(cx + 120, cy + 40);
+      ctx.lineTo(cx + 105, cy + 110);
+      ctx.lineTo(cx + 50, cy + 110);
+      ctx.lineTo(cx + 40, cy + 85);
+      ctx.lineTo(cx, cy + 95);
+      ctx.lineTo(cx - 40, cy + 85);
+      ctx.lineTo(cx - 50, cy + 110);
+      ctx.lineTo(cx - 105, cy + 110);
+      ctx.lineTo(cx - 120, cy + 40);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Central core ambient occlusion
+      const coreShadow = ctx.createRadialGradient(cx, cy - 10, 10, cx, cy - 10, 110);
+      coreShadow.addColorStop(0.0, 'rgba(0, 0, 0, 0.9)');
+      coreShadow.addColorStop(0.7, 'rgba(0, 0, 0, 0.6)');
+      coreShadow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = coreShadow;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 10, 75, 120, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(canvas);
+      return tex;
+    }
+
+    /* --------------------------------------------------------------------------
+       3. HIGH-TECH SPEEDER SHIP (Wipeout / Delorean Hybrid)
+       -------------------------------------------------------------------------- */
+    function createPlayerShip() {
+      playerShip = new THREE.Group();
+
+      // Main Aerodynamic Hull
+      const hullGeo = new THREE.ConeGeometry(1.4, 4.8, 5);
+      const hullMat = new THREE.MeshStandardMaterial({
+        color: 0x111320,
+        roughness: 0.2,
+        metalness: 0.9
+      });
+      const hull = new THREE.Mesh(hullGeo, hullMat);
+      hull.rotation.x = Math.PI / 2;
+      hull.rotation.y = Math.PI / 5;
+      hull.scale.set(1.1, 1, 0.5);
+      playerShip.add(hull);
+
+      // Glowing Cockpit Glass
+      const cockpitGeo = new THREE.BoxGeometry(0.9, 0.35, 1.8);
+      const cockpitMat = new THREE.MeshBasicMaterial({ color: 0x00fff0 });
+      const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+      cockpit.position.set(0, 0.45, -0.2);
+      playerShip.add(cockpit);
+
+      // Swept Delta Wings with Glowing Neon Trim
+      const wingGeo = new THREE.BoxGeometry(5.2, 0.1, 1.6);
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0x0a0c16, metalness: 0.8 });
+      const wings = new THREE.Mesh(wingGeo, wingMat);
+      wings.position.set(0, 0.1, 0.8);
+      playerShip.add(wings);
+
+      // Wing Edge Neon Beams
+      const edgeGeo = new THREE.BoxGeometry(5.22, 0.12, 0.1);
+      const edgeMat = new THREE.MeshBasicMaterial({ color: 0x00fff0 });
+      const wingEdge = new THREE.Mesh(edgeGeo, edgeMat);
+      wingEdge.position.set(0, 0.1, 1.6);
+      playerShip.add(wingEdge);
+
+      // Dual Angled Tail Stabilizers (Spoilers)
+      const finGeo = new THREE.BoxGeometry(0.1, 1.1, 1.1);
+      const finMat = new THREE.MeshBasicMaterial({ color: 0xff00c8 });
+
+      const leftFin = new THREE.Mesh(finGeo, finMat);
+      leftFin.position.set(-2.2, 0.6, 1.1);
+      leftFin.rotation.z = -0.25;
+
+      const rightFin = new THREE.Mesh(finGeo, finMat);
+      rightFin.position.set(2.2, 0.6, 1.1);
+      rightFin.rotation.z = 0.25;
+
+      playerShip.add(leftFin);
+      playerShip.add(rightFin);
+
+      // Twin Plasma Exhaust Turbines with Animated Flame Cones
+      const turbineGeo = new THREE.CylinderGeometry(0.35, 0.5, 0.9, 12);
+      const turbineMat = new THREE.MeshStandardMaterial({ color: 0x222233 });
+
+      const leftTurbine = new THREE.Mesh(turbineGeo, turbineMat);
+      leftTurbine.rotation.x = Math.PI / 2;
+      leftTurbine.position.set(-0.9, 0.1, 2.0);
+
+      const rightTurbine = leftTurbine.clone();
+      rightTurbine.position.x = 0.9;
+
+      // Exhaust Fire Cones
+      const flameGeo = new THREE.ConeGeometry(0.35, 1.8, 12);
+      const flameMat = new THREE.MeshBasicMaterial({
+        color: 0x00fff0,
+        transparent: true,
+        opacity: 0.85
+      });
+
+      const leftFlame = new THREE.Mesh(flameGeo, flameMat);
+      leftFlame.rotation.x = -Math.PI / 2;
+      leftFlame.position.set(0, -1.0, 0);
+      leftTurbine.add(leftFlame);
+
+      const rightFlame = leftFlame.clone();
+      rightTurbine.add(rightFlame);
+
+      thrusterFlames.push(leftFlame, rightFlame);
+
+      playerShip.add(leftTurbine);
+      playerShip.add(rightTurbine);
+
+      playerShip.position.set(0, 1.6, 0);
+      scene.add(playerShip);
+
+      // Dynamic Aerodynamic Ground Shadow & Underglow (projected on road surface)
+      const currentKey = themeSelect ? themeSelect.value : 'synthwave';
+      const shadowTex = generateShipShadowTexture(currentKey);
+      const shadowGeo = new THREE.PlaneGeometry(6.4, 8.2);
+      shadowGeo.rotateX(-Math.PI / 2);
+      const shadowMat = new THREE.MeshBasicMaterial({
+        map: shadowTex,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.NormalBlending,
+        opacity: 0.85
+      });
+      shipShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+      shipShadowMesh.position.set(0, 0.02, 0);
+      scene.add(shipShadowMesh);
+    }
+
+    /* --------------------------------------------------------------------------
+       4. PROCEDURAL CYBERPUNK SKYSCRAPERS & BILLBOARDS
+       -------------------------------------------------------------------------- */
+    function generateBuildingWindowTexture() {
+      const bCanvas = document.createElement('canvas');
+      bCanvas.width = 128;
+      bCanvas.height = 256;
+      const bCtx = bCanvas.getContext('2d');
+      bCtx.fillStyle = '#080612';
+      bCtx.fillRect(0, 0, 128, 256);
+
+      // Random glowing windows
+      const colors = ['#00fff0', '#ff00c8', '#ffaa00', '#00ff87'];
+      for (let y = 10; y < 246; y += 14) {
+        for (let x = 8; x < 120; x += 12) {
+          if (Math.random() > 0.45) {
+            bCtx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+            bCtx.fillRect(x, y, 6, 8);
+          }
+        }
+      }
+      const tex = new THREE.CanvasTexture(bCanvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 6);
+      return tex;
+    }
+
+    const windowTexture = generateBuildingWindowTexture();
+
+    function createSkyscrapers() {
+      const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+
+      for (let i = 0; i < 46; i++) {
+        const height = Math.random() * 65 + 25;
+        const width = Math.random() * 12 + 8;
+        const depth = Math.random() * 15 + 10;
+
+        const side = i % 2 === 0 ? -1 : 1;
+        const xPos = side * (ROAD_WIDTH / 2 + width / 2 + 8 + Math.random() * 55);
+        const zPos = -Math.random() * 380;
+
+        const bldgMat = new THREE.MeshLambertMaterial({
+          map: windowTexture,
+          color: currentTheme.bldg
+        });
+        const bldg = new THREE.Mesh(boxGeo, bldgMat);
+        bldg.scale.set(width, height, depth);
+        bldg.position.set(xPos, height / 2 - 0.5, zPos);
+
+        // Neon outline
+        const edges = new THREE.EdgesGeometry(boxGeo);
+        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: currentTheme.bldgEdge }));
+        bldg.add(line);
+
+        // Rooftop antenna with blinking warning beacon
+        if (Math.random() > 0.3) {
+          const spireGeo = new THREE.CylinderGeometry(0.1, 0.4, 12, 6);
+          const spireMat = new THREE.MeshBasicMaterial({ color: 0x666688 });
+          const spire = new THREE.Mesh(spireGeo, spireMat);
+          spire.position.set(0, 0.5 + 6 / height, 0);
+
+          const beaconGeo = new THREE.SphereGeometry(0.7, 8, 8);
+          const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+          const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+          beacon.position.set(0, 6, 0);
+          spire.add(beacon);
+
+          bldg.add(spire);
+        }
+
+        scene.add(bldg);
+        buildings.push(bldg);
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       5. OVERHEAD NEON HIGHWAY GANTRIES (Arches)
+       -------------------------------------------------------------------------- */
+    function createOverheadGates() {
+      for (let i = 0; i < 4; i++) {
+        const gate = new THREE.Group();
+        const archGeo = new THREE.BoxGeometry(ROAD_WIDTH + 4, 1.2, 1.5);
+        const archMat = new THREE.MeshBasicMaterial({ color: 0x00fff0 });
+        const arch = new THREE.Mesh(archGeo, archMat);
+        arch.position.set(0, 9, 0);
+
+        const pillarGeo = new THREE.BoxGeometry(1.2, 10, 1.5);
+        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x111322 });
+
+        const leftP = new THREE.Mesh(pillarGeo, pillarMat);
+        leftP.position.set(-(ROAD_WIDTH / 2 + 1.8), 4.5, 0);
+
+        const rightP = new THREE.Mesh(pillarGeo, pillarMat);
+        rightP.position.set((ROAD_WIDTH / 2 + 1.8), 4.5, 0);
+
+        gate.add(arch);
+        gate.add(leftP);
+        gate.add(rightP);
+
+        gate.position.set(0, 0, -i * 100 - 80);
+        scene.add(gate);
+        overheadGates.push(gate);
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       6. HYPERDRIVE SPEED STREAKS (Dynamic Speedlines)
+       -------------------------------------------------------------------------- */
+    function createSpeedLines() {
+      const lineCount = 350;
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(lineCount * 3);
+
+      for (let i = 0; i < lineCount * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 140;
+        positions[i + 1] = Math.random() * 45;
+        positions[i + 2] = -Math.random() * 320;
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.PointsMaterial({
+        color: 0x00fff0,
+        size: 0.9,
+        transparent: true,
+        opacity: 0.75
+      });
+
+      speedLines = new THREE.Points(geometry, material);
+      scene.add(speedLines);
+    }
+
+    /* --------------------------------------------------------------------------
+       7. OBSTACLES & QUANTUM COLLECTIBLES
+       -------------------------------------------------------------------------- */
+    function spawnEnergyCube() {
+      const group = new THREE.Group();
+      group.seed = Math.random() * 10;
+
+      // 1. Outer Gyro Ring (Cyan Torus)
+      const ring1Geo = new THREE.TorusGeometry(1.5, 0.08, 8, 28);
+      const ring1Mat = new THREE.MeshBasicMaterial({ color: currentTheme.cube });
+      const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
+      group.add(ring1);
+      group.ring1 = ring1;
+
+      // 2. Middle Gyro Ring (Magenta Torus)
+      const ring2Geo = new THREE.TorusGeometry(1.15, 0.07, 8, 24);
+      const ring2Mat = new THREE.MeshBasicMaterial({ color: currentTheme.mountainWire });
+      const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+      group.add(ring2);
+      group.ring2 = ring2;
+
+      // 3. Inner Gyro Ring (Yellow/Accent Torus)
+      const ring3Geo = new THREE.TorusGeometry(0.8, 0.06, 8, 20);
+      const ring3Mat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+      const ring3 = new THREE.Mesh(ring3Geo, ring3Mat);
+      group.add(ring3);
+      group.ring3 = ring3;
+
+      // 4. Central Radiant Quantum Diamond / Octahedron
+      const coreGeo = new THREE.OctahedronGeometry(0.55, 0);
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      group.add(core);
+      group.core = core;
+
+      // 5. Mini Orbiting Energy Sparkles
+      const sparkGeo = new THREE.SphereGeometry(0.12, 6, 6);
+      const sparkMat = new THREE.MeshBasicMaterial({ color: currentTheme.cube });
+      const spark1 = new THREE.Mesh(sparkGeo, sparkMat);
+      const spark2 = new THREE.Mesh(sparkGeo, sparkMat);
+      group.add(spark1);
+      group.add(spark2);
+      group.spark1 = spark1;
+      group.spark2 = spark2;
+
+      const laneX = (Math.random() - 0.5) * (ROAD_WIDTH - 6);
+      group.position.set(laneX, 1.9, -320);
+      scene.add(group);
+      energyCubes.push(group);
+    }
+
+    function spawnObstacle() {
+      const group = new THREE.Group();
+      group.seed = Math.random() * 10;
+
+      // 1. Left & Right Heavy Generator Pylons with Hazard Rings
+      const pylonGeo = new THREE.CylinderGeometry(0.5, 0.65, 4.2, 8);
+      const pylonMat = new THREE.MeshStandardMaterial({
+        color: 0x141022,
+        metalness: 0.9,
+        roughness: 0.3
+      });
+
+      const leftPylon = new THREE.Mesh(pylonGeo, pylonMat);
+      leftPylon.position.set(-3.2, 2.1, 0);
+
+      const rightPylon = new THREE.Mesh(pylonGeo, pylonMat);
+      rightPylon.position.set(3.2, 2.1, 0);
+
+      // Glowing Hazard Bands on Pylons
+      const bandGeo = new THREE.TorusGeometry(0.66, 0.09, 6, 16);
+      const bandMat = new THREE.MeshBasicMaterial({ color: currentTheme.obst });
+
+      const b1 = new THREE.Mesh(bandGeo, bandMat); b1.rotation.x = Math.PI / 2; b1.position.y = 0.8;
+      const b2 = new THREE.Mesh(bandGeo, bandMat); b2.rotation.x = Math.PI / 2; b2.position.y = -0.8;
+      leftPylon.add(b1); leftPylon.add(b2);
+
+      const b3 = b1.clone(); const b4 = b2.clone();
+      rightPylon.add(b3); rightPylon.add(b4);
+
+      group.add(leftPylon);
+      group.add(rightPylon);
+
+      // 2. High-Voltage Pulsing Laser Beams (3 horizontal + 1 diagonal)
+      group.lasers = [];
+      const laserGeo = new THREE.CylinderGeometry(0.09, 0.09, 6.4, 8);
+      const laserMat = new THREE.MeshBasicMaterial({ color: currentTheme.obst });
+
+      [-1.0, 0, 1.0].forEach(yPos => {
+        const laser = new THREE.Mesh(laserGeo, laserMat);
+        laser.rotation.z = Math.PI / 2;
+        laser.position.set(0, 2.1 + yPos, 0);
+        group.add(laser);
+        group.lasers.push(laser);
+      });
+
+      // Diagonal laser
+      const diagLaserGeo = new THREE.CylinderGeometry(0.07, 0.07, 6.8, 8);
+      const diagLaser = new THREE.Mesh(diagLaserGeo, laserMat);
+      diagLaser.rotation.z = Math.PI / 2.7;
+      diagLaser.position.set(0, 2.1, 0);
+      group.add(diagLaser);
+      group.lasers.push(diagLaser);
+
+      // 3. Central Floating Spinning Hazard Glyph
+      const glyphGeo = new THREE.OctahedronGeometry(0.85, 0);
+      const glyphMat = new THREE.MeshBasicMaterial({
+        color: 0xff0033,
+        wireframe: true
+      });
+      const glyph = new THREE.Mesh(glyphGeo, glyphMat);
+      glyph.position.set(0, 2.1, 0);
+      group.add(glyph);
+      group.glyph = glyph;
+
+      const laneX = (Math.random() - 0.5) * (ROAD_WIDTH - 8);
+      group.position.set(laneX, 0, -330);
+      scene.add(group);
+      obstacles.push(group);
+    }
+
+    // Explosion Particle Shards
+    function triggerExplosion(pos, colorHex) {
+      const count = 30;
+      const group = new THREE.Group();
+      const geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+
+      const shards = [];
+      for (let i = 0; i < count; i++) {
+        const shard = new THREE.Mesh(geo, mat);
+        shard.position.copy(pos);
+        const vel = new THREE.Vector3(
+          (Math.random() - 0.5) * 1.2,
+          Math.random() * 0.9 + 0.2,
+          (Math.random() - 0.5) * 1.2
+        );
+        shards.push({ mesh: shard, vel });
+        group.add(shard);
+      }
+      scene.add(group);
+      particleExplosions.push({ group, shards, life: 1.0 });
+    }
+
+    /* --------------------------------------------------------------------------
+       8. MAIN GAME LOOP & UPDATES
+       -------------------------------------------------------------------------- */
+    let lastSpawn = 0;
+    let clock = new THREE.Clock();
+    let terrainOffset = 0;
+
+    function updateScene(delta) {
+      const time = clock.getElapsedTime();
+
+      // Flame cone flicker pulse
+      thrusterFlames.forEach(f => {
+        const scale = 1.0 + Math.sin(time * 25) * 0.25;
+        f.scale.set(scale, 1.0 + Math.random() * 0.4, scale);
+      });
+
+      // Sun Coronas & Anamorphic Flare Shimmer
+      if (sunInnerGlow) {
+        const pulse = 1.0 + Math.sin(time * 2.2) * 0.05;
+        sunInnerGlow.scale.set(pulse, pulse, 1);
+      }
+      if (sunOuterGlow) {
+        const pulseOuter = 1.0 + Math.sin(time * 1.4) * 0.08;
+        sunOuterGlow.scale.set(pulseOuter, pulseOuter, 1);
+      }
+      if (sunAnamorphicFlare) {
+        const flarePulse = 1.0 + Math.sin(time * 3.2) * 0.16;
+        sunAnamorphicFlare.scale.set(1.0 + Math.sin(time * 1.5) * 0.04, flarePulse, 1);
+      }
+      if (sunMesh) {
+        const hoverY = 27 + Math.sin(time * 0.8) * 0.6;
+        sunMesh.position.y = hoverY;
+        if (sunInnerGlow) sunInnerGlow.position.y = hoverY;
+        if (sunOuterGlow) sunOuterGlow.position.y = hoverY;
+        if (sunAnamorphicFlare) sunAnamorphicFlare.position.y = hoverY;
+      }
+
+      if (!isPlaying) {
+        // Idle hover animation on start screen
+        const hoverH = 1.6 + Math.sin(time * 3) * 0.2;
+        playerShip.position.y = hoverH;
+        playerShip.rotation.z = Math.sin(time * 1.5) * 0.05;
+
+        if (shipShadowMesh) {
+          shipShadowMesh.position.x = playerShip.position.x;
+          shipShadowMesh.position.z = playerShip.position.z + 0.25;
+          const s = 1.0 + (hoverH - 1.6) * 0.22;
+          shipShadowMesh.scale.set(s, 1.0, s);
+          shipShadowMesh.material.opacity = 0.85 - (hoverH - 1.4) * 0.25;
+        }
+        return;
+      }
+
+      // Smooth horizontal steering & banking roll
+      shipX += (targetShipX - shipX) * 0.12;
+      playerShip.position.x = shipX;
+      playerShip.position.y = 1.6 + Math.sin(time * 6) * 0.1;
+
+      // Realistic 3D Banking Roll and Yaw
+      const turnDelta = targetShipX - shipX;
+      playerShip.rotation.z = -turnDelta * 0.32;
+      playerShip.rotation.y = turnDelta * 0.18;
+      playerShip.rotation.x = Math.min(speed * 0.03, 0.12);
+
+      // Dynamic Aerodynamic Ground Shadow & Underglow
+      if (shipShadowMesh) {
+        // Parallax shift based on banking angle from horizon sun
+        shipShadowMesh.position.x = shipX - (playerShip.rotation.z * 0.7);
+        shipShadowMesh.position.z = playerShip.position.z + 0.25;
+        shipShadowMesh.position.y = 0.02; // Flush with asphalt
+
+        // Match ship yaw rotation
+        shipShadowMesh.rotation.y = playerShip.rotation.y * 0.85;
+
+        // Altitude & Banking Scale Deformation:
+        // As ship rolls, shadow contracts on X and elongates on Z
+        const hoverH = playerShip.position.y;
+        const altitudeFactor = Math.max(0.5, hoverH / 1.6);
+        const baseScale = 1.0 + (altitudeFactor - 1.0) * 0.3;
+        const bankAbs = Math.abs(playerShip.rotation.z);
+        const scaleX = baseScale * (1.0 - bankAbs * 0.38);
+        const scaleZ = baseScale * (1.0 + bankAbs * 0.18);
+
+        shipShadowMesh.scale.set(scaleX, 1.0, scaleZ);
+
+        // Opacity softens as ship hovers higher
+        shipShadowMesh.material.opacity = Math.max(0.45, 0.92 - (hoverH - 1.4) * 0.35);
+      }
+
+      // Dynamically scroll highway texture at hypersonic speed
+      if (roadTexture) {
+        roadTexture.offset.y -= speed * 0.038;
+      }
+
+      // Move glowing roadside light beacons
+      railBeacons.forEach(b => {
+        b.position.z += speed;
+        if (b.position.z > 20) b.position.z -= TERRAIN_LENGTH;
+      });
+
+      // Dynamically scroll terrain geometry
+      terrainOffset += speed * 0.9;
+      const pos = terrainGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const baseZ = pos.getZ(i);
+        const distFromRoad = Math.abs(x) - (ROAD_WIDTH / 2);
+
+        if (distFromRoad > 0) {
+          const factor = Math.min(distFromRoad / 45, 1.0);
+          const movingZ = baseZ - terrainOffset;
+          const y = (Math.sin(x * 0.08) * Math.cos(movingZ * 0.04) * 18 +
+                     Math.cos(x * 0.03 + movingZ * 0.03) * 24 +
+                     Math.sin(movingZ * 0.08) * 10) * factor;
+          pos.setY(i, Math.max(0, y));
+        }
+      }
+      pos.needsUpdate = true;
+
+      // Move Skyscrapers
+      buildings.forEach(b => {
+        b.position.z += speed;
+        if (b.position.z > 30) {
+          b.position.z = -380 - Math.random() * 40;
+        }
+      });
+
+      // Move Overhead Gantries
+      overheadGates.forEach(g => {
+        g.position.z += speed;
+        if (g.position.z > 20) {
+          g.position.z = -400;
+        }
+      });
+
+      // Move Speed Particle Streaks
+      const pArr = speedLines.geometry.attributes.position.array;
+      for (let i = 2; i < pArr.length; i += 3) {
+        pArr[i] += speed * 2.8;
+        if (pArr[i] > 15) {
+          pArr[i] = -320;
+        }
+      }
+      speedLines.geometry.attributes.position.needsUpdate = true;
+
+      // Spawning Items & Obstacles
+      const now = performance.now();
+      if (now - lastSpawn > 800) {
+        lastSpawn = now;
+        if (Math.random() < 0.65) spawnEnergyCube();
+        if (Math.random() < 0.55) spawnObstacle();
+      }
+
+      // Update Gyroscopic Quantum Relics (Items)
+      for (let i = energyCubes.length - 1; i >= 0; i--) {
+        const item = energyCubes[i];
+        item.position.z += speed;
+
+        // Active multi-axis gyroscopic rotation
+        if (item.ring1) { item.ring1.rotation.x += 0.05; item.ring1.rotation.y += 0.03; }
+        if (item.ring2) { item.ring2.rotation.y += 0.07; item.ring2.rotation.z += 0.04; }
+        if (item.ring3) { item.ring3.rotation.z += 0.09; item.ring3.rotation.x += 0.06; }
+        if (item.core) { item.core.rotation.y += 0.08; }
+
+        // Orbiting sparks
+        if (item.spark1 && item.spark2) {
+          const sTime = time * 5 + item.seed;
+          item.spark1.position.set(Math.cos(sTime) * 1.8, Math.sin(sTime) * 1.8, 0);
+          item.spark2.position.set(Math.sin(sTime) * 1.8, 0, Math.cos(sTime) * 1.8);
+        }
+
+        // Floating levitation wave
+        item.position.y = 1.9 + Math.sin(time * 4 + item.seed) * 0.35;
+
+        const dist = item.position.distanceTo(playerShip.position);
+
+        // Magnetic attraction pulse when ship is nearby
+        if (dist < 9 && item.core) {
+          item.core.scale.setScalar(1.0 + (9 - dist) * 0.12);
+        }
+
+        if (dist < 2.8) {
+          score += 200;
+          hudScore.textContent = score;
+          sound.playCollect();
+          triggerExplosion(item.position, 0x00fff0);
+          scene.remove(item);
+          energyCubes.splice(i, 1);
+          continue;
+        }
+
+        if (item.position.z > 20) {
+          scene.remove(item);
+          energyCubes.splice(i, 1);
+        }
+      }
+
+      // Update High-Voltage Glitch Laser Gates (Obstacles)
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.position.z += speed;
+
+        // Floating bobbing motion
+        obs.position.y = Math.sin(time * 5 + obs.seed) * 0.3;
+
+        // Spinning hazard glyph
+        if (obs.glyph) {
+          obs.glyph.rotation.y += 0.08;
+          obs.glyph.rotation.z += 0.04;
+        }
+
+        // High-voltage laser buzzing flicker
+        if (obs.lasers) {
+          obs.lasers.forEach(l => {
+            l.scale.x = 0.85 + Math.sin(time * 22 + obs.seed) * 0.25;
+            l.scale.z = l.scale.x;
+          });
+        }
+
+        // Collision check with center of gate
+        const obsCenter = new THREE.Vector3(obs.position.x, 2.1 + obs.position.y, obs.position.z);
+        const dist = obsCenter.distanceTo(playerShip.position);
+        if (dist < 3.3) {
+          shield -= 25;
+          hudShieldBar.style.width = `${Math.max(0, shield)}%`;
+          hudShieldText.textContent = `${Math.max(0, shield)}%`;
+          sound.playHit();
+          triggerExplosion(obsCenter, 0xff0044);
+
+          // Camera Shake
+          camera.position.x += (Math.random() - 0.5) * 1.8;
+          camera.position.y += (Math.random() - 0.5) * 1.5;
+
+          scene.remove(obs);
+          obstacles.splice(i, 1);
+
+          if (shield <= 0) {
+            endGame();
+            return;
+          }
+          continue;
+        }
+
+        if (obs.position.z > 20) {
+          scene.remove(obs);
+          obstacles.splice(i, 1);
+        }
+      }
+
+      // Update Particle Explosions
+      for (let i = particleExplosions.length - 1; i >= 0; i--) {
+        const exp = particleExplosions[i];
+        exp.life -= delta * 1.5;
+        exp.shards.forEach(s => {
+          s.mesh.position.add(s.vel);
+          s.mesh.scale.setScalar(exp.life);
+        });
+
+        if (exp.life <= 0) {
+          scene.remove(exp.group);
+          particleExplosions.splice(i, 1);
+        }
+      }
+
+      // Progressive Score & Speed
+      score += 2;
+      hudScore.textContent = score;
+      speed = 1.6 + Math.min(score / 3000, 2.2);
+      hudSpeed.textContent = `${Math.round(speed * 130)} KM/H`;
+
+      // Dynamic FOV Warp Effect
+      camera.fov = 66 + Math.min((speed - 1.6) * 12, 14);
+      camera.updateProjectionMatrix();
+
+      // Camera Follow
+      if (camMode === 'pilot') {
+        camera.position.x += (shipX * 0.45 - camera.position.x) * 0.1;
+        camera.lookAt(shipX * 0.65, 2.4, -40);
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      updateScene(delta);
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    // Controls & Listeners
+    function resetGame() {
+      score = 0;
+      shield = 100;
+      speed = 1.6;
+      shipX = 0;
+      targetShipX = 0;
+      hudScore.textContent = '0';
+      hudShieldBar.style.width = '100%';
+      hudShieldText.textContent = '100%';
+      hudSpeed.textContent = '210 KM/H';
+
+      energyCubes.forEach(c => scene.remove(c));
+      obstacles.forEach(o => scene.remove(o));
+      energyCubes = [];
+      obstacles = [];
+    }
+
+    function startGame() {
+      sound.init();
+      sound.startMusic();
+      resetGame();
+      isPlaying = true;
+      overlayScreen.style.display = 'none';
+    }
+
+    function endGame() {
+      isPlaying = false;
+      sound.stopMusic();
+      overlayMsg.innerHTML = `<span class="text-magenta font-extrabold text-base">¡SISTEMAS SOBRECARGADOS!</span><br/>Has alcanzado <span class="text-accent font-bold">${score}</span> puntos de telemetría a ${hudSpeed.textContent}.`;
+      btnPlayGame.textContent = 'VOLVER A DESPEGAR';
+      overlayScreen.style.display = 'flex';
+    }
+
+    btnPlayGame.addEventListener('click', startGame);
+
+    // Keyboard Steering
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+        targetShipX = Math.max(-(ROAD_WIDTH / 2 - 2), targetShipX - 3.8);
+      }
+      if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+        targetShipX = Math.min(ROAD_WIDTH / 2 - 2, targetShipX + 3.8);
+      }
+    });
+
+    // Touch Steering
+    btnTouchLeft.addEventListener('pointerdown', () => {
+      targetShipX = Math.max(-(ROAD_WIDTH / 2 - 2), targetShipX - 4.5);
+    });
+    btnTouchRight.addEventListener('pointerdown', () => {
+      targetShipX = Math.min(ROAD_WIDTH / 2 - 2, targetShipX + 4.5);
+    });
+
+    // Pointer Drag Steering
+    let isDragging = false;
+    let prevDragX = 0;
+
+    container.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      prevDragX = e.clientX;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (isDragging && isPlaying) {
+        const deltaX = (e.clientX - prevDragX) * 0.085;
+        targetShipX = Math.max(-(ROAD_WIDTH / 2 - 2), Math.min(ROAD_WIDTH / 2 - 2, targetShipX + deltaX));
+        prevDragX = e.clientX;
+      }
+    });
+
+    window.addEventListener('pointerup', () => { isDragging = false; });
+
+    // Mode & Theme UI
+    btnCamMode.addEventListener('click', () => {
+      camMode = camMode === 'pilot' ? 'orbit' : 'pilot';
+      btnCamMode.textContent = camMode === 'pilot' ? 'Piloto' : 'Drone 360°';
+      if (camMode === 'pilot') {
+        camera.position.set(shipX * 0.45, 4.8, 12);
+        camera.lookAt(shipX * 0.65, 2.5, -40);
+      } else {
+        camera.position.set(0, 24, 28);
+        camera.lookAt(0, 0, -60);
+      }
+    });
+
+    themeSelect.addEventListener('change', (e) => {
+      currentTheme = THEMES[e.target.value] || THEMES.synthwave;
+      scene.background.set(currentTheme.bg);
+      scene.fog.color.set(currentTheme.fog);
+
+      if (sunMesh) {
+        sunMesh.material.map = generateSunTexture(e.target.value);
+        sunMesh.material.needsUpdate = true;
+      }
+      if (sunInnerGlow) {
+        const themeKey = e.target.value;
+        sunInnerGlow.material.map = generateGlowTexture(
+          themeKey === 'matrix' ? 'rgba(0, 255, 135, 0.85)' : (themeKey === 'deepspace' ? 'rgba(0, 255, 255, 0.85)' : 'rgba(255, 220, 90, 0.85)'),
+          themeKey === 'matrix' ? 'rgba(0, 100, 40, 0.3)' : (themeKey === 'deepspace' ? 'rgba(120, 0, 255, 0.3)' : 'rgba(255, 0, 130, 0.35)')
+        );
+        sunInnerGlow.material.needsUpdate = true;
+      }
+      if (sunOuterGlow) {
+        const themeKey = e.target.value;
+        sunOuterGlow.material.map = generateGlowTexture(
+          themeKey === 'matrix' ? 'rgba(0, 255, 135, 0.45)' : (themeKey === 'deepspace' ? 'rgba(0, 150, 255, 0.45)' : 'rgba(255, 0, 180, 0.45)'),
+          'rgba(0, 0, 0, 0)'
+        );
+        sunOuterGlow.material.needsUpdate = true;
+      }
+      if (sunAnamorphicFlare) {
+        const themeKey = e.target.value;
+        sunAnamorphicFlare.material.map = generateAnamorphicTexture(
+          '#ffffff',
+          themeKey === 'matrix' ? 'rgba(0, 255, 135, 0.7)' : (themeKey === 'deepspace' ? 'rgba(0, 200, 255, 0.7)' : 'rgba(255, 0, 160, 0.7)')
+        );
+        sunAnamorphicFlare.material.needsUpdate = true;
+      }
+      if (horizonLaser) {
+        const themeKey = e.target.value;
+        horizonLaser.material.color.set(themeKey === 'matrix' ? 0x00ff87 : (themeKey === 'deepspace' ? 0x00fff0 : 0xff00c8));
+      }
+      if (terrainWireframe) terrainWireframe.material.color.set(currentTheme.mountainWire);
+      if (terrainMesh) terrainMesh.material.color.set(currentTheme.mountainFill);
+      if (highwayMesh) {
+        roadTexture = generateHighwayTexture(e.target.value);
+        highwayMesh.material.map = roadTexture;
+        highwayMesh.material.emissiveMap = roadTexture;
+        highwayMesh.material.emissive.set(currentTheme.grid);
+        highwayMesh.material.needsUpdate = true;
+      }
+      railBeacons.forEach(b => b.material.color.set(currentTheme.grid));
+      if (shipShadowMesh) {
+        shipShadowMesh.material.map = generateShipShadowTexture(e.target.value);
+        shipShadowMesh.material.needsUpdate = true;
+      }
+      buildings.forEach(b => {
+        b.material.color.set(currentTheme.bldg);
+        if (b.children[0]) b.children[0].material.color.set(currentTheme.bldgEdge);
+      });
+    });
+
+    btnMusic.addEventListener('click', () => {
+      sound.musicEnabled = !sound.musicEnabled;
+      btnMusic.textContent = sound.musicEnabled ? '🎵 Música: ON' : '🔇 Música: OFF';
+      btnMusic.style.color = sound.musicEnabled ? '#ff66e0' : 'var(--ts)';
+      if (!sound.musicEnabled) sound.stopMusic();
+      else if (isPlaying) sound.startMusic();
+    });
+
+    btnFullscreen.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        viewportContainer.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // Start
+    initThree();
+    animate();
+  </script>
+</body>
+</html>

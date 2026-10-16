@@ -187,12 +187,20 @@
       </p>
     </section>
 
-    <!-- APP GRID -->
-    <section id="app-grid" class="max-w-6xl mx-auto px-5 sm:px-8 py-12">
+    <!-- APP FILTERS & GRID -->
+    <section id="app-grid" class="max-w-6xl mx-auto px-5 sm:px-8 py-8">
+      <!-- Filter Bar -->
+      <div class="flex flex-wrap items-center justify-center gap-2 mb-8 font-mono text-xs">
+        <button class="filter-btn active px-3.5 py-1.5 rounded border border-cyan/40 bg-cyan/10 text-cyan hover:border-cyan transition-all" data-filter="all">[ Todos (9) ]</button>
+        <button class="filter-btn px-3.5 py-1.5 rounded border border-[#2a2a40] bg-[#0e0e18] text-ts hover:border-cyan/50 hover:text-cyan transition-all" data-filter="tool">[ Herramientas ]</button>
+        <button class="filter-btn px-3.5 py-1.5 rounded border border-[#2a2a40] bg-[#0e0e18] text-ts hover:border-cyan/50 hover:text-cyan transition-all" data-filter="sim">[ Simuladores ]</button>
+        <button class="filter-btn px-3.5 py-1.5 rounded border border-[#2a2a40] bg-[#0e0e18] text-ts hover:border-cyan/50 hover:text-cyan transition-all" data-filter="game">[ Juegos & 3D ]</button>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         <!-- Tarjeta 1: Calculadora IP -->
-        <a href="./apps/ip-calc.html" class="project-card cyber-card">
+        <a href="./apps/ip-calc.html" class="project-card cyber-card" data-category="tool">
           <div class="flex items-start gap-4 mb-4">
             <div class="icon-box">
               <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2M12 15V3m-4 4l4-4 4 4"/></svg>
@@ -208,7 +216,7 @@
         </a>
 
         <!-- Tarjeta 2: Cifrador -->
-        <a href="./apps/cipher.html" class="project-card cyber-card" style="border-color: rgba(255,0,200,0.3);">
+        <a href="./apps/cipher.html" class="project-card cyber-card" style="border-color: rgba(255,0,200,0.3);" data-category="tool">
           <div class="flex items-start gap-4 mb-4">
             <div class="icon-box" style="background:rgba(255,0,200,0.07);border-color:rgba(255,0,200,0.18);color:var(--magenta);">
               <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -223,10 +231,74 @@
           </div>
         </a>
 
-        <!-- Tarjeta 3: Neon Pong -->
-        <a href="./apps/pong.html" class="project-card cyber-card" style="border-color: rgba(157,0,255,0.3);">
+        <!-- Tarjeta 3: Hollywood Hacker Terminal -->
+        <a href="./apps/hacker-typer.html" class="project-card cyber-card" style="border-color: rgba(0,255,135,0.3);" data-category="sim">
           <div class="flex items-start gap-4 mb-4">
-            <div class="icon-box" style="background:rgba(157,0,255,0.07);border-color:rgba(157,0,255,0.18);color:var(--purple);">
+            <div class="icon-box">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <div>
+              <h3 class="font-mono font-semibold text-[#eeeeff] text-lg">Cyber Terminal Hacker</h3>
+            </div>
+          </div>
+          <p class="text-ts text-sm mb-6 flex-grow">Simulador de terminal estilo película con pulsaciones rápidas, alertas de brecha y sintetizador de audio.</p>
+          <div class="flex flex-wrap gap-2 mt-auto">
+            <span class="tag">Terminal</span><span class="tag">Audio Synth</span><span class="tag">Hollywood</span>
+          </div>
+        </a>
+
+        <!-- Tarjeta 4: Conway's Game of Life -->
+        <a href="./apps/game-of-life.html" class="project-card cyber-card" style="border-color: rgba(0,255,240,0.3);" data-category="sim">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="icon-box" style="background:rgba(0,255,240,0.07);border-color:rgba(0,255,240,0.18);color:var(--cyan);">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </div>
+            <div>
+              <h3 class="font-mono font-semibold text-[#eeeeff] text-lg">Conway's Game of Life</h3>
+            </div>
+          </div>
+          <p class="text-ts text-sm mb-6 flex-grow">Simulador de autómata celular neón con presets autónomos, control de velocidad y dibujo reactivo.</p>
+          <div class="flex flex-wrap gap-2 mt-auto">
+            <span class="tag">Simulación</span><span class="tag">Matemáticas</span><span class="tag">Canvas</span>
+          </div>
+        </a>
+
+        <!-- Tarjeta 5: Orbit Gravity Sandbox -->
+        <a href="./apps/gravity.html" class="project-card cyber-card" style="border-color: rgba(0,255,240,0.3);" data-category="sim">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="icon-box" style="background:rgba(0,255,240,0.07);border-color:rgba(0,255,240,0.18);color:var(--cyan);">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24"/></svg>
+            </div>
+            <div>
+              <h3 class="font-mono font-semibold text-[#eeeeff] text-lg">Orbit Gravity Sandbox</h3>
+            </div>
+          </div>
+          <p class="text-ts text-sm mb-6 flex-grow">Física gravitacional de N-Cuerpos. Lanza planetas, simula el problema de los tres cuerpos y agujeros negros.</p>
+          <div class="flex flex-wrap gap-2 mt-auto">
+            <span class="tag">Física</span><span class="tag">Astronomía</span><span class="tag">Caos</span>
+          </div>
+        </a>
+
+        <!-- Tarjeta 6: Cyber Synth & Sequencer -->
+        <a href="./apps/cyber-synth.html" class="project-card cyber-card" style="border-color: rgba(255,0,200,0.3);" data-category="game">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="icon-box" style="background:rgba(255,0,200,0.07);border-color:rgba(255,0,200,0.18);color:var(--magenta);">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div>
+              <h3 class="font-mono font-semibold text-[#eeeeff] text-lg">Cyber Synth & Sequencer</h3>
+            </div>
+          </div>
+          <p class="text-ts text-sm mb-6 flex-grow">Sintetizador analógico interactivo con osciloscopio en tiempo real, secuenciador de ritmos y filtro cutoff.</p>
+          <div class="flex flex-wrap gap-2 mt-auto">
+            <span class="tag">Web Audio API</span><span class="tag">Synthwave</span><span class="tag">Audio FX</span>
+          </div>
+        </a>
+
+        <!-- Tarjeta 7: Neon Pong -->
+        <a href="./apps/pong.html" class="project-card cyber-card" style="border-color: rgba(157,0,255,0.3);" data-category="game">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="icon-box" style="background:rgba(157,0,255,0.07);border-color:rgba(157,0,255,0.18);color:#bf55ec;">
               <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4m10-2h.01M14 12h.01"/>
               </svg>
@@ -235,14 +307,78 @@
               <h3 class="font-mono font-semibold text-[#eeeeff] text-lg">Neon Pong v1.0</h3>
             </div>
           </div>
-          <p class="text-ts text-sm mb-6 flex-grow">Clásico juego de Pong con estética Cyberpunk/Neon. Modos 1 y 2 jugadores.</p>
+          <p class="text-ts text-sm mb-6 flex-grow">Clásico juego de Pong con estética Cyberpunk/Neon. Modos 1 y 2 jugadores contra autómata.</p>
           <div class="flex flex-wrap gap-2 mt-auto">
             <span class="tag">Canvas HTML5</span><span class="tag">JavaScript</span><span class="tag">Gaming</span>
+          </div>
+        </a>
+
+        <!-- Tarjeta 8: Neon Cyber Snake -->
+        <a href="./apps/snake.html" class="project-card cyber-card" style="border-color: rgba(0,255,135,0.3);" data-category="game">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="icon-box">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12A10 10 0 0 1 12 2z"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <div>
+              <h3 class="font-mono font-semibold text-[#eeeeff] text-lg">Neon Cyber Snake</h3>
+            </div>
+          </div>
+          <p class="text-ts text-sm mb-6 flex-grow">Juego Snake neón con recolección de paquetes cuánticos, partículas explosivas y tabla de récords local.</p>
+          <div class="flex flex-wrap gap-2 mt-auto">
+            <span class="tag">Retro Gaming</span><span class="tag">Partículas</span><span class="tag">Arcade</span>
+          </div>
+        </a>
+
+        <!-- Tarjeta 9: Neon Outrun 3D (Three.js) -->
+        <a href="./apps/cyber-city-3d.html" class="project-card cyber-card" style="border-color: rgba(0,255,240,0.4);" data-category="game">
+          <div class="flex items-start gap-4 mb-4">
+            <div class="icon-box" style="background:rgba(0,255,240,0.08);border-color:rgba(0,255,240,0.25);color:var(--cyan);">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-mono font-semibold text-[#eeeeff] text-lg">Neon Outrun 3D</h3>
+            </div>
+          </div>
+          <p class="text-ts text-sm mb-6 flex-grow">Vuelo 3D procedural sobre una metrópolis cyberpunk en Three.js. Esquiva barreras, recolecta energía y rota la cámara en 360°.</p>
+          <div class="flex flex-wrap gap-2 mt-auto">
+            <span class="tag">Three.js</span><span class="tag">WebGL 3D</span><span class="tag">Synthwave</span>
           </div>
         </a>
 
       </div>
     </section>
   </main>
+
+  <script>
+    // Category Filter Handler
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const cards = document.querySelectorAll('.project-card');
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filter = btn.dataset.filter;
+
+        filterBtns.forEach(b => {
+          b.classList.remove('active', 'border-cyan/40', 'bg-cyan/10', 'text-cyan');
+          b.classList.add('border-[#2a2a40]', 'bg-[#0e0e18]', 'text-ts');
+        });
+
+        btn.classList.add('active', 'border-cyan/40', 'bg-cyan/10', 'text-cyan');
+        btn.classList.remove('border-[#2a2a40]', 'bg-[#0e0e18]', 'text-ts');
+
+        cards.forEach(card => {
+          if (filter === 'all' || card.dataset.category === filter) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+  </script>
 </body>
 </html>
